@@ -4,21 +4,26 @@ project(RayTracer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include(FetchContent)
+# Проверяем наличие GLFW
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/includes/GLFW/include/GLFW/glfw3.h")
+    message(FATAL_ERROR "GLFW not found! Expected: includes/GLFW/include/GLFW/glfw3.h")
+endif()
 
-FetchContent_Declare(
-        glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.8
+# Ищем GLFW библиотеку в разных местах
+find_library(GLFW_LIBRARY
+        NAMES glfw3 glfw glfw3dll
+        PATHS
+        "${CMAKE_SOURCE_DIR}/includes/GLFW/lib"
+        "${CMAKE_SOURCE_DIR}/includes/GLFW/lib-mingw-w64"
+        "${CMAKE_SOURCE_DIR}/includes/GLFW/lib-vc2022"
+        NO_DEFAULT_PATH
 )
 
-FetchContent_Declare(
-        glm
-        GIT_REPOSITORY https://github.com/g-truc/glm.git
-        GIT_TAG 0.9.9.8
-)
-
-FetchContent_MakeAvailable(glfw glm)
+if(NOT GLFW_LIBRARY)
+    message(FATAL_ERROR "GLFW library not found! Check includes/GLFW/ folder")
+else()
+    message(STATUS "Found GLFW library: ${GLFW_LIBRARY}")
+endif()
 
 set(SOURCES
         src/main.cpp
@@ -37,39 +42,38 @@ set(HEADERS
 
 add_executable(RayTracer ${SOURCES} ${HEADERS})
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/includes/glad/glad.c)
-    message(STATUS "GLAD найден, добавляем в проект")
-    add_library(glad ${CMAKE_SOURCE_DIR}/includes/glad/glad.c)
-    target_include_directories(glad PUBLIC ${CMAKE_SOURCE_DIR}/includes)
-    target_link_libraries(RayTracer glad)
-else()
-    message(WARNING "GLAD НЕ НАЙДЕН! Создаем заглушку...")
+# GLAD
+add_library(glad STATIC "${CMAKE_SOURCE_DIR}/includes/glad/glad.c")
+target_include_directories(glad PUBLIC "${CMAKE_SOURCE_DIR}/includes")
 
-    # Создаем временные файлы GLAD
-    file(WRITE ${CMAKE_BINARY_DIR}/glad.h "#pragma once\nint gladLoadGLLoader(void*);")
-    file(WRITE ${CMAKE_BINARY_DIR}/glad.c "#include \"glad.h\"\nint gladLoadGLLoader(void* p) { return 1; }")
-
-    add_library(glad ${CMAKE_BINARY_DIR}/glad.c)
-    target_include_directories(glad PUBLIC ${CMAKE_BINARY_DIR})
-    target_link_libraries(RayTracer glad)
-endif()
-
+# Подключаем заголовки
 target_include_directories(RayTracer PRIVATE
-        ${CMAKE_SOURCE_DIR}/includes
-        ${CMAKE_SOURCE_DIR}/lib
+        "${CMAKE_SOURCE_DIR}/src"
+        "${CMAKE_SOURCE_DIR}/includes"
+        "${CMAKE_SOURCE_DIR}/includes/GLFW/include"
 )
 
+# ЛИНКУЕМ библиотеки - это ключевое!
 target_link_libraries(RayTracer
-        glfw
-        glm::glm
+        glad           # GLAD библиотека
+        ${GLFW_LIBRARY} # GLFW библиотека
+        opengl32       # OpenGL для Windows
+        gdi32          # GDI для Windows
 )
 
-if(WIN32)
-    target_link_libraries(RayTracer opengl32)
+# Для MinGW добавляем статическую линковку runtime
+if(MINGW)
+    target_link_options(RayTracer PRIVATE
+            -static-libgcc
+            -static-libstdc++
+            -static
+    )
 endif()
 
-if(MSVC)
-    target_compile_options(RayTracer PRIVATE /W4)
-else()
-    target_compile_options(RayTracer PRIVATE -Wall -Wextra -pedantic)
-endif()
+# Настройки компилятора
+target_compile_options(RayTracer PRIVATE
+        -Wall
+        -Wextra
+        -pedantic
+        -Wno-unused-parameter
+)

@@ -1,5 +1,5 @@
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "GLFW/glfw3.h"
 #include <iostream>
 #include <vector>
 
@@ -164,7 +164,13 @@ void setupScene() {
 }
 
 void setupCamera() {
-    cameraController.updateCamera(camera);
+    //cameraController.updateCamera(camera);
+    camera = Camera(
+            Vector3(0, 1, 5),    // Позиция камеры
+            Vector3(0, 0, 0),    // Смотрим в центр
+            45.0f,               // Угол обзора
+            (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT  // Соотношение сторон
+    );
 }
 
 int main() {

@@ -54,6 +54,13 @@ public:
         os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
         return os;
     }
+    Vector3 cross(const Vector3& v) const {
+        return Vector3(
+                y * v.z - z * v.y,
+                z * v.x - x * v.z,
+                x * v.y - y * v.x
+        );
+    }
 };
 
 #endif

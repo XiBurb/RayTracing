@@ -27,27 +27,25 @@ public:
     Camera(const Vector3& position, const Vector3& lookAt,
            float vfov, float aspectRatio) {
         float theta = vfov * 3.14159265359f / 180.0f;
-        float h = std::tan(theta / 2.0f);
-        float viewportHeight = 2.0f * h;
-        float viewportWidth = aspectRatio * viewportHeight;
-
-        Vector3 w = (position - lookAt).normalize();
-        Vector3 u = Vector3(0, 1, 0).normalize();
-        Vector3 v = Vector3(
-                u.y * w.z - u.z * w.y,
-                u.z * w.x - u.x * w.z,
-                u.x * w.y - u.y * w.x
-        ).normalize();
-        u = Vector3(
-                v.y * w.z - v.z * w.y,
-                v.z * w.x - v.x * w.z,
-                v.x * w.y - v.y * w.x
-        );
+        float halfHeight = tan(theta / 2.0f);
+        float halfWidth = aspectRatio * halfHeight;
 
         this->position = position;
-        horizontal = u * viewportWidth;
-        vertical = v * viewportHeight;
-        lowerLeftCorner = position - horizontal / 2.0f - vertical / 2.0f - w;
+
+        // Направление взгляда: от камеры к цели
+        Vector3 w = (lookAt - position).normalize();  // <- ИЗМЕНИТЬ НА lookAt - position
+
+        // Вспомогательные векторы
+        Vector3 up = Vector3(0, 1, 0);
+        Vector3 u = up.cross(w).normalize();  // Правое направление
+        Vector3 v = w.cross(u);               // Верхнее направление
+
+        // Вычисляем углы viewport
+        horizontal = u * (2.0f * halfWidth);
+        vertical = v * (2.0f * halfHeight);
+
+        // Нижний левый угол
+        lowerLeftCorner = position - u * halfWidth - v * halfHeight + w;
     }
 
     Ray getRay(float u, float v) const {
